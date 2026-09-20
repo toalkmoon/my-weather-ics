@@ -11,8 +11,19 @@ LOCATION = os.environ.get("LOCATION_ID", "101210606")
 
 def get_weather_data():
     url = f"https://devapi.qweather.com/v7/weather/7d?location={LOCATION}&key={API_KEY}"
-    res = requests.get(url).json()
-    return res.get("daily", [])
+    response = requests.get(url)
+    res = response.json()
+    
+    # 如果 API 返回状态码不是 200，抛出明确错误
+    code = res.get("code")
+    if code != "200":
+        raise Exception(f"和风天气 API 报错 [Code: {code}]: {res}")
+        
+    daily = res.get("daily", [])
+    if not daily:
+        raise Exception(f"和风天气返回的数据列表为空: {res}")
+        
+    return daily
 
 
 def generate_ics(daily_data):
@@ -46,7 +57,6 @@ def generate_ics(daily_data):
         event.add('summary', summary)
         event.add('description', description)
         
-        # 使用 vDate 正确包装日期类型
         event.add('dtstart', vDate(event_date))
         event.add('dtend', vDate(event_date + timedelta(days=1)))
         event.add('transp', 'TRANSPARENT')
@@ -68,7 +78,8 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(ics_content)
         except Exception as e:
+            # 将具体错误直接输出在网页上方便排查
             self.send_response(500)
             self.send_header('Content-Type', 'text/plain; charset=utf-8')
             self.end_headers()
-            self.wfile.write(f"Error generating calendar: {str(e)}".encode('utf-8'))
+            self.wfile.write(f"Weather Calendar Error: {str(e)}".encode('utf-8'))
