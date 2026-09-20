@@ -1,13 +1,8 @@
 {
-  "functions": {
-    "api/weather.py": {
-      "runtime": "@vercel/python"
-    }
-  },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/api/weather.py"
+      "source": "/(.*)",
+      "destination": "/api/weather.py"
     }
   ]
 }
