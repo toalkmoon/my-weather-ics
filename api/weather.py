@@ -1,7 +1,6 @@
 import os
 import requests
 from datetime import datetime, timedelta
-from dateutil.rrule import YEARLY
 from icalendar import Calendar, Event, Date
 from http.server import BaseHTTPRequestHandler
 
@@ -47,7 +46,7 @@ def generate_ics(daily_data):
         event.add('summary', summary)
         event.add('description', description)
         
-        # 使用 Date() 明确转换为全天日程格式
+        # 使用 Date 封装确保标准全天日程格式
         event.add('dtstart', Date(event_date))
         event.add('dtend', Date(event_date + timedelta(days=1)))
         event.add('transp', 'TRANSPARENT')
@@ -70,6 +69,6 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(ics_content)
         except Exception as e:
             self.send_response(500)
-            self.send_header('Content-type', 'text/plain; charset=utf-8')
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
             self.end_headers()
             self.wfile.write(f"Error generating calendar: {str(e)}".encode('utf-8'))
