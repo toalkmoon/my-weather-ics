@@ -1,4 +1,4 @@
-requests
-icalendar
 PyJWT
 cryptography
+requests
+icalendar
