@@ -4,7 +4,9 @@ import json
 import gzip
 import urllib.request
 import jwt
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
+from icalendar import Calendar, Event
 
 # ==================== 1. 从环境变量获取配置 ====================
 API_HOST = os.getenv("QWEATHER_API_HOST", "https://n85khxxf87.re.qweatherapi.com")
@@ -66,22 +68,69 @@ def fetch_weather_data():
         return json.loads(raw_data.decode('utf-8'))
 
 
+def generate_ics(weather_data):
+    """将和风天气 JSON 转换为 ICS 文本格式"""
+    cal = Calendar()
+    cal.add('prodid', '-//My Weather ICS//NONSGML v1.0//EN')
+    cal.add('version', '2.0')
+    cal.add('x-wr-calname', '仙居天气预报')  # 苹果日历中显示的订阅名称
+    cal.add('x-wr-timezone', 'Asia/Shanghai')
+
+    daily_forecasts = weather_data.get('daily', [])
+    for day in daily_forecasts:
+        event = Event()
+        
+        # 解析预报日期 (格式如: 2026-09-20)
+        fx_date = datetime.strptime(day['fxDate'], '%Y-%m-%d').date()
+        
+        # 预报参数提取
+        cond_day = day.get('textDay', '未知')
+        cond_night = day.get('textNight', '')
+        temp_min = day.get('tempMin', '')
+        temp_max = day.get('tempMax', '')
+        wind_dir = day.get('windDirDay', '')
+        wind_scale = day.get('windScaleDay', '')
+        precip = day.get('precip', '0.0')
+
+        # 拼接日程标题：天气状况与最高/最低气温
+        summary = f"🌤 {cond_day} {temp_min}°C ~ {temp_max}°C"
+        
+        # 拼接详细描述信息
+        description = (
+            f"日间天气：{cond_day}\n"
+            f"夜间天气：{cond_night}\n"
+            f"气温：{temp_min}°C ~ {temp_max}°C\n"
+            f"风向风力：{wind_dir} {wind_scale}级\n"
+            f"降水量：{precip} mm"
+        )
+
+        event.add('summary', summary)
+        event.add('description', description)
+        event.add('dtstart', fx_date)
+        # 苹果全天日程在 iCalendar 规范中结束日期需为次日
+        event.add('dtend', fx_date + timedelta(days=1))
+        
+        cal.add_component(event)
+
+    return cal.to_ical()
+
+
 # ==================== 2. Vercel 必须的 HTTP 入口 Handler ====================
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             weather_data = fetch_weather_data()
+            ics_bytes = generate_ics(weather_data)
             
-            # 返回 200 成功与 JSON 数据
+            # 返回 200 成功与 text/calendar 响应头（让苹果日历能够正确识别）
             self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Type', 'text/calendar; charset=utf-8')
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
             self.end_headers()
             
-            response_body = json.dumps(weather_data, ensure_ascii=False)
-            self.wfile.write(response_body.encode('utf-8'))
+            self.wfile.write(ics_bytes)
 
         except Exception as e:
-            # 捕获异常，输出具体的报错信息，便于定位
             self.send_response(500)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
