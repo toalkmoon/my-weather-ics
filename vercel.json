@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/weather.ics",
+      "destination": "/api/weather"
+    }
+  ]
+}
