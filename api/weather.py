@@ -10,25 +10,42 @@ LOCATION = os.environ.get("LOCATION_ID", "101210606")
 
 
 def get_weather_data():
-    url = f"https://devapi.qweather.com/v7/weather/7d?location={LOCATION}&key={API_KEY}"
+    # 备选 API 域名列表：开发版域名 与 商业/通用版域名
+    hosts = [
+        "https://devapi.qweather.com",
+        "https://api.qweather.com"
+    ]
     
-    # 增加标准的 User-Agent 请求头，避免被和风天气防火墙当作非法 Host/Bot 拦截
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Encoding": "gzip"
     }
-    
-    response = requests.get(url, headers=headers)
-    res = response.json()
-    
-    code = res.get("code")
-    if code != "200":
-        raise Exception(f"和风天气 API 报错 [Code: {code}]: {res}")
-        
-    daily = res.get("daily", [])
-    if not daily:
-        raise Exception(f"和风天气返回的数据列表为空: {res}")
-        
-    return daily
+
+    last_exception = None
+
+    for host in hosts:
+        url = f"{host}/v7/weather/7d?location={LOCATION}&key={API_KEY}"
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            res = response.json()
+
+            # 如果遇到 Host 错误，跳过并尝试下一个域名
+            if "error" in res and res.get("error", {}).get("title") == "Invalid Host":
+                continue
+
+            code = res.get("code")
+            if code == "200":
+                daily = res.get("daily", [])
+                if daily:
+                    return daily
+                raise Exception(f"和风天气返回的天气列表为空: {res}")
+            else:
+                raise Exception(f"和风天气 API 报错 [Code: {code}]: {res}")
+
+        except Exception as e:
+            last_exception = e
+
+    raise Exception(f"请求和风天气失败，已尝试所有域名。详细错误: {last_exception}")
 
 
 def generate_ics(daily_data):
