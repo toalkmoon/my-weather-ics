@@ -1,2 +1,10 @@
+[project]
+name = "my-weather-ics"
+version = "0.1.0"
+dependencies = [
+    "requests",
+    "icalendar",
+]
+
 [tool.vercel]
 entrypoint = "api.weather:handler"
