@@ -1,7 +1,7 @@
 import os
 import requests
 from datetime import datetime, timedelta
-from icalendar import Calendar, Event, Date
+from icalendar import Calendar, Event, vDate
 from http.server import BaseHTTPRequestHandler
 
 # 和风天气 API 配置
@@ -46,9 +46,9 @@ def generate_ics(daily_data):
         event.add('summary', summary)
         event.add('description', description)
         
-        # 使用 Date 封装确保标准全天日程格式
-        event.add('dtstart', Date(event_date))
-        event.add('dtend', Date(event_date + timedelta(days=1)))
+        # 使用 vDate 正确包装日期类型
+        event.add('dtstart', vDate(event_date))
+        event.add('dtend', vDate(event_date + timedelta(days=1)))
         event.add('transp', 'TRANSPARENT')
 
         cal.add_component(event)
