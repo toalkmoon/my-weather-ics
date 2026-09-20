@@ -11,10 +11,15 @@ LOCATION = os.environ.get("LOCATION_ID", "101210606")
 
 def get_weather_data():
     url = f"https://devapi.qweather.com/v7/weather/7d?location={LOCATION}&key={API_KEY}"
-    response = requests.get(url)
+    
+    # 增加标准的 User-Agent 请求头，避免被和风天气防火墙当作非法 Host/Bot 拦截
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    response = requests.get(url, headers=headers)
     res = response.json()
     
-    # 如果 API 返回状态码不是 200，抛出明确错误
     code = res.get("code")
     if code != "200":
         raise Exception(f"和风天气 API 报错 [Code: {code}]: {res}")
@@ -78,7 +83,6 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(ics_content)
         except Exception as e:
-            # 将具体错误直接输出在网页上方便排查
             self.send_response(500)
             self.send_header('Content-Type', 'text/plain; charset=utf-8')
             self.end_headers()
