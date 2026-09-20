@@ -1,8 +1,13 @@
 {
-  "rewrites": [
+  "functions": {
+    "api/weather.py": {
+      "runtime": "python3.12"
+    }
+  },
+  "routes": [
     {
-      "source": "/weather.ics",
-      "destination": "/api/weather"
+      "src": "/(.*)",
+      "dest": "/api/weather.py"
     }
   ]
 }
